@@ -38,43 +38,33 @@ public class Toolbar extends FlowPanel {
 
 	add(createIconButton("reply",   "Undo", new MyCommand("edit", "undo")));
 	add(createIconButton("forward", "Redo", new MyCommand("edit", "redo")));
-	add(createIconButton("scissors", "Cut", new MyCommand("edit", "cut")));
-	add(createIconButton("copy", "Copy", new MyCommand("edit", "copy")));
-	add(createIconButton("paste", "Paste", new MyCommand("edit", "paste")));
-	add(createIconButton("clone", "Duplicate", new MyCommand("edit", "duplicate")));
 	add(createIconButton("search", "Find Component...", new MyCommand("edit", "search")));
 
-	add(createIconButton("zoom-11", "Zoom 100%", new MyCommand("zoom", "zoom100")));
 	add(createIconButton("zoom-in", "Zoom In", new MyCommand("zoom", "zoomin")));
 	add(createIconButton("zoom-out", "Zoom Out", new MyCommand("zoom", "zoomout")));
 
+	// ---- Schul-Bauteile (Marc: nur diese 13, keine sonstigen elektronischen
+	// Bauteile aus dem vollen CircuitJS-Katalog) ----
+	// Alle Bauteile werden einheitlich als Icon-Knopf dargestellt (kein Mix
+	// aus Icons und Text-Knoepfen mehr).
 	add(createIconButton(wireIcon, "WireElm"));
+	add(createIconButton(batteryIcon, "BatteryElm"));
 	add(resistorButton = createIconButton(resistorIcon, "ResistorElm"));
-	add(createIconButton(groundIcon, "GroundElm"));
+	add(createIconButton(lampIcon, "LampElm"));
+	add(createIconButton(ledIcon, "LEDElm"));
+	add(createIconButton(switchIcon, "SwitchElm"));
 	add(createIconButton(capacitorIcon, "CapacitorElm"));
 	add(createIconButton(inductIcon, "InductorElm"));
+	add(createIconButton(potIcon, "PotElm"));
 	add(createIconButton(diodeIcon, "DiodeElm"));
-	String srcInfo[] = { voltage2Icon, "DCVoltageElm", acSrcIcon, "ACVoltageElm" };
-	add(createButtonSet(srcInfo));
-	add(createIconButton(railIcon, "RailElm"));
+	add(createIconButton(groundIcon, "GroundElm"));
+	add(createIconButton(ammeterIcon, "AmmeterElm"));
+	add(createIconButton(voltmeterIcon, "ProbeElm"));
 
-	String switchInfo[] = { switchIcon, "SwitchElm", spdtIcon, "Switch2Elm", aswitch1Icon, "AnalogSwitchElm",
-				aswitch2Icon, "AnalogSwitch2Elm" };
-	add(createButtonSet(switchInfo));
-
-	String opAmpInfo[] = { opAmpBotIcon, "OpAmpElm", opAmpTopIcon, "OpAmpSwapElm" };
-	add(createButtonSet(opAmpInfo));
-
-	String transistorInfo[] = { transistorIcon, "NTransistorElm", pnpTransistorIcon, "PTransistorElm" };
-	add(createButtonSet(transistorInfo));
-
-	String fetInfo[] = { fetIcon, "NMosfetElm", fetIcon2, "PMosfetElm" };
-	add(createButtonSet(fetInfo));
-
-	add(createIconButton(inverterIcon, "InverterElm"));
-	String gateInfo[] = { andIcon, "AndGateElm", nandIcon, "NandGateElm",
-			      orIcon, "OrGateElm", norIcon, "NorGateElm", xorIcon, "XorGateElm", xnorIcon, "XnorGateElm" };
-	add(createButtonSet(gateInfo));
+	// ---- Stromfluss / Potentiale an- und ausschalten (ersetzt die beiden
+	// Checkboxen im Options-Menü durch gut sichtbare Toolbar-Knoepfe) ----
+	add(createToggleButton("Stromfluss", CirSim.theApp.menus.dotsCheckItem));
+	add(createToggleButton("Potentiale", CirSim.theApp.menus.voltsCheckItem));
 
         // Create and add the mode label
         modeLabel = new Label("");
@@ -89,6 +79,107 @@ public class Toolbar extends FlowPanel {
     private Label createIconButton(String icon, String cls) {
 	CirSim app = CirSim.theApp;
 	return createIconButton(icon, app.getLabelTextForClass(cls), new MyCommand("main", cls));
+    }
+
+    // Wie createIconButton(String, String), aber fuer Bauteile ohne fertiges
+    // Icon in dieser Klasse: zeigt stattdessen einen kurzen Text-Knopf
+    // (gleiches Verhalten: Klick/Ziehen platziert das Bauteil, Aktiv-Markierung,
+    // Tooltip beim Draufhalten - alles wie bei den Icon-Knoepfen).
+    private Label createTextButton(String text, String cls) {
+	CirSim app = CirSim.theApp;
+	return createTextButton(text, app.getLabelTextForClass(cls), new MyCommand("main", cls));
+    }
+
+    private Label createTextButton(String text, String tooltip, MyCommand command) {
+	Label iconLabel = new Label();
+	iconLabel.setText(text);
+	iconLabel.setTitle(Locale.LS(tooltip));
+
+	Style style = iconLabel.getElement().getStyle();
+	style.setFontSize(12, Style.Unit.PX);
+	style.setFontWeight(Style.FontWeight.BOLD);
+	style.setColor("#333");
+	style.setPadding(4, Style.Unit.PX);
+	style.setMarginRight(5, Style.Unit.PX);
+	style.setCursor(Style.Cursor.POINTER);
+	style.setBorderWidth(1, Style.Unit.PX);
+	style.setBorderStyle(Style.BorderStyle.SOLID);
+	style.setBorderColor("#ccc");
+	style.setProperty("borderRadius", "4px");
+	style.setProperty("touchAction", "none");
+
+	iconLabel.addMouseOverHandler(event -> iconLabel.getElement().getStyle().setColor("#007bff"));
+	iconLabel.addMouseOutHandler(event -> iconLabel.getElement().getStyle().setColor("#333"));
+
+	iconLabel.addClickHandler(new ClickHandler() {
+	    @Override
+	    public void onClick(ClickEvent event) {
+		iconLabel.getElement().getStyle().setColor("#333");
+		if (iconLabel == activeButton) {
+		    new MyCommand("main", "Select").execute();
+		    activeButton = null;
+		} else
+		    command.execute();
+	    }
+	});
+
+	if (command.getMenuName().equals("main")) {
+	    highlightableButtons.put(command.getItemName(), iconLabel);
+
+	    iconLabel.addMouseDownHandler(mde -> {
+		if (mde.getNativeButton() == NativeEvent.BUTTON_LEFT)
+		    UIManager.theUI.mouse.beginToolbarDrag(command.getItemName(), mde.getClientX(), mde.getClientY());
+	    });
+	    addTouchDragSupport(iconLabel.getElement());
+
+	    iconLabel.addMouseOverHandler(event -> {
+		String label = CirSim.theApp.getLabelTextForClass(command.getItemName());
+		if (label != null)
+		    setModeLabel(label + Locale.LS(": Drag And Drop To Create"));
+	    });
+	    iconLabel.addMouseOutHandler(event -> UIManager.theUI.updateToolbar());
+	}
+
+	return iconLabel;
+    }
+
+    // Einfacher An/Aus-Knopf fuer "Stromfluss"/"Potentiale" - spiegelt und
+    // steuert direkt das zugehoerige CheckboxMenuItem aus dem (ausgeblendeten)
+    // Options-Menu, damit beide Wege (falls das Menu doch mal sichtbar ist)
+    // synchron bleiben.
+    private Label createToggleButton(String text, final CheckboxMenuItem item) {
+	final Label btn = new Label(text);
+	Style style = btn.getElement().getStyle();
+	style.setFontSize(12, Style.Unit.PX);
+	style.setFontWeight(Style.FontWeight.BOLD);
+	style.setCursor(Style.Cursor.POINTER);
+	style.setPadding(4, Style.Unit.PX);
+	style.setMarginRight(5, Style.Unit.PX);
+	style.setBorderWidth(1, Style.Unit.PX);
+	style.setBorderStyle(Style.BorderStyle.SOLID);
+	style.setBorderColor("#ccc");
+	style.setProperty("borderRadius", "4px");
+	style.setProperty("touchAction", "none");
+
+	Runnable refresh = () -> {
+	    Style s = btn.getElement().getStyle();
+	    if (item.getState()) {
+		s.setColor("#ffffff");
+		s.setBackgroundColor("#2e8b57");
+	    } else {
+		s.setColor("#333");
+		s.setBackgroundColor("#ffffff");
+	    }
+	};
+	refresh.run();
+
+	btn.addClickHandler(event -> {
+	    item.execute(); // flippt den Zustand des CheckboxMenuItem (und ruft ggf. dessen Zusatz-Aktion auf)
+	    refresh.run();
+	    CirSim.theApp.repaint();
+	});
+
+	return btn;
     }
 
     private Label createIconButton(String iconClass, String tooltip, MyCommand command) {
@@ -336,6 +427,60 @@ public class Toolbar extends FlowPanel {
     public void setEuroResistors(boolean euro) {
 	resistorButton.getElement().setInnerHTML(makeSvg(euro ? euroResistorIcon : resistorIcon, 24));
     }
+
+    // ---- Neue Icons fuer die Schul-Bauteile, die im vollen CircuitJS-Katalog
+    // bisher keinen eigenen Toolbar-Knopf hatten (bisher nur per Text-Knopf
+    // dargestellt). Einheitlicher Stil wie die uebrigen Icons oben: einfache
+    // Linien-Symbole in einem 24x24-Koordinatenraum, stroke='currentColor'. ----
+    final String batteryIcon = "<svg><g fill='none' stroke='currentColor' stroke-width='1.5'>" +
+	   "<line x1='2' y1='12' x2='9' y2='12' /> " +
+	   "<line x1='9' y1='5' x2='9' y2='19' /> " +
+	   "<line x1='13' y1='8' x2='13' y2='16' stroke-width='4' /> " +
+	   "<line x1='13' y1='12' x2='22' y2='12' /> " +
+	   "</g></svg>";
+
+    final String lampIcon = "<svg><g fill='none' stroke='currentColor' stroke-width='1.5'>" +
+	   "<line x1='2' y1='12' x2='4' y2='12' /> " +
+	   "<circle cx='12' cy='12' r='8' /> " +
+	   "<line x1='6.3' y1='6.3' x2='17.7' y2='17.7' /> " +
+	   "<line x1='6.3' y1='17.7' x2='17.7' y2='6.3' /> " +
+	   "<line x1='20' y1='12' x2='22' y2='12' /> " +
+	   "</g></svg>";
+
+    final String ledIcon = "<svg><g fill='none' stroke='currentColor' stroke-width='1.5'>" +
+	   "<line x1='2' y1='12' x2='9' y2='12' /> " +
+	   "<path d='M 9 6 L 9 18 L 17 12 Z' fill='currentColor' stroke='none' /> " +
+	   "<line x1='17' y1='6' x2='17' y2='18' /> " +
+	   "<line x1='17' y1='12' x2='22' y2='12' /> " +
+	   "<line x1='15' y1='3' x2='19' y2='7' stroke-width='1.2' /> " +
+	   "<path d='M 19 7 L 19 4.3 M 19 7 L 16.3 7' stroke-width='1.2' /> " +
+	   "<line x1='19' y1='1' x2='23' y2='5' stroke-width='1.2' /> " +
+	   "<path d='M 23 5 L 23 2.3 M 23 5 L 20.3 5' stroke-width='1.2' /> " +
+	   "</g></svg>";
+
+    final String potIcon = "<svg><g fill='none' stroke='currentColor' stroke-width='1.5'>" +
+	   "<line x1='1' y1='16' x2='4' y2='16' /> " +
+	   "<path d='M 4 16 L 6 11 L 9 21 L 12 11 L 15 21 L 18 11 L 20 16' /> " +
+	   "<line x1='20' y1='16' x2='23' y2='16' /> " +
+	   "<line x1='5' y1='19' x2='19' y2='4' /> " +
+	   "<path d='M 19 4 L 15.5 5 M 19 4 L 18 7.5' /> " +
+	   "</g></svg>";
+
+    final String ammeterIcon = "<svg><g fill='none' stroke='currentColor' stroke-width='1.5'>" +
+	   "<line x1='2' y1='12' x2='4' y2='12' /> " +
+	   "<circle cx='12' cy='12' r='8' /> " +
+	   "<line x1='20' y1='12' x2='22' y2='12' /> " +
+	   "<text x='12' y='12.5' text-anchor='middle' dominant-baseline='central' " +
+	   "font-family='sans-serif' font-size='10px' fill='currentColor' stroke='none'>A</text>" +
+	   "</g></svg>";
+
+    final String voltmeterIcon = "<svg><g fill='none' stroke='currentColor' stroke-width='1.5'>" +
+	   "<line x1='2' y1='12' x2='4' y2='12' /> " +
+	   "<circle cx='12' cy='12' r='8' /> " +
+	   "<line x1='20' y1='12' x2='22' y2='12' /> " +
+	   "<text x='12' y='12.5' text-anchor='middle' dominant-baseline='central' " +
+	   "font-family='sans-serif' font-size='10px' fill='currentColor' stroke='none'>V</text>" +
+	   "</g></svg>";
 
     final String wireIcon = "<svg><g transform='scale(0.208) translate(7.5, 32)'>" +
            "<line x1='5' y1='45' x2='95' y2='5' stroke='currentColor' stroke-width='8' /> " +

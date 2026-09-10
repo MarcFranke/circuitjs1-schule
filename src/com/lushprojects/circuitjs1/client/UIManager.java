@@ -204,7 +204,10 @@ public class UIManager {
 	menus.dotsCheckItem.setState(true);
 	menus.voltsCheckItem.setState(true);
 	menus.showValuesCheckItem.setState(true);
-	menus.toolbarCheckItem.setState(!hideMenu && !noEditing && !hideSidebar && height > 700);
+	// Schul-Build: die (jetzt stark vereinfachte) Bauteil-Werkzeugleiste soll
+	// auch dann sichtbar bleiben, wenn das native Menue (File/Edit/Draw/...)
+	// per hideMenu=true ausgeblendet ist - daher hier ohne "!hideMenu".
+	menus.toolbarCheckItem.setState(!noEditing && !hideSidebar && height > 700);
 	menus.crossHairCheckItem.setState(getOptionFromStorage("crossHair", false));
 	menus.euroResistorCheckItem.setState(euroSetting);
 	menus.euroResistorCheckItem.setCommand(

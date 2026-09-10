@@ -31,8 +31,11 @@ class LampElm extends CircuitElm {
 	public LampElm(int xx, int yy) {
 	    super(xx, yy);
 	    temp = roomTemp;
-	    nom_pow = 100;
-	    nom_v = 120;
+	    // Schul-Standardwerte statt CircuitJS' 100W/120V (die ergeben kalt nur
+	    // ca. 7,2 Ohm - bei Schulspannungen wie 4,5V/9V unrealistisch wenig
+	    // Widerstand). 0,6W/4,5V ergibt kalt ca. 160 Ohm.
+	    nom_pow = 0.6;
+	    nom_v = 4.5;
 	    warmTime = .4;
 	    coolTime = .4;
 	    startIteration(); // set resistance
@@ -73,29 +76,27 @@ class LampElm extends CircuitElm {
 	}
 	int getDumpType() { return 181; }
 
-	Point bulbLead[], filament[], bulb;
+	Point bulb;
 	int bulbR;
 
 	void reset() {
 	    super.reset();
 	    temp = roomTemp;
-	    
+
 	    startIteration(); // set resistance
 	}
-	final int filament_len = 24;
 	void setPoints() {
 	    super.setPoints();
 	    int llen = 16;
 	    calcLeads(llen);
-	    bulbLead = newPointArray(2);
-	    filament = newPointArray(2);
 	    bulbR = 20;
-	    filament[0] = interpPoint(lead1, lead2, 0, filament_len);
-	    filament[1] = interpPoint(lead1, lead2, 1, filament_len);
-	    double br = filament_len-Math.sqrt(bulbR*bulbR-llen*llen);
-	    bulbLead[0] = interpPoint(lead1, lead2, 0, br);
-	    bulbLead[1] = interpPoint(lead1, lead2, 1, br);
-	    bulb = interpPoint(filament[0], filament[1], .5);
+	    // Schulsymbol: Kreis liegt einfach mittig auf der Geraden lead1-lead2,
+	    // die Zuleitungen gehen gerade hinein (kein Versatz mehr - das
+	    // urspruengliche CircuitJS-"Gluehbirnen"-Filament war hier senkrecht
+	    // versetzt gezeichnet, was frueher von der gefuellten Birne komplett
+	    // verdeckt wurde, beim schlichten Kreis+X-Symbol aber als sichtbarer
+	    // Knick im Kabel auffiel).
+	    bulb = interpPoint(lead1, lead2, .5);
 	}
 
 	Color getTempColor() {
@@ -129,26 +130,25 @@ class LampElm extends CircuitElm {
 	    // adjustbbox
 	    draw2Leads(g);
 	    setPowerColor(g, true);
+	    // Schulsymbol (IEC/DIN): Kreis mit "X" statt Gluehbirnen-Icon.
+	    // Farbe folgt weiterhin der Temperatur (kalt=dunkel, heiss=hell),
+	    // damit "Stromfluss"/"Potentiale" weiterhin sichtbar bleiben.
 	    g.setColor(getTempColor());
-	    g.fillOval(bulb.x-bulbR, bulb.y-bulbR, bulbR*2, bulbR*2);
-	    g.setColor(whiteColor);
 	    drawThickCircle(g, bulb.x, bulb.y, bulbR);
+	    int off = (int)Math.round(bulbR * 0.7071); // 45 Grad-Versatz fuer das X im Kreis
+	    drawThickLine(g, bulb.x-off, bulb.y-off, bulb.x+off, bulb.y+off);
+	    drawThickLine(g, bulb.x-off, bulb.y+off, bulb.x+off, bulb.y-off);
 	    setVoltageColor(g, v1);
-	    drawThickLine(g, lead1, filament[0]);
+	    drawThickLine(g, lead1, bulb);
 	    setVoltageColor(g, v2);
-	    drawThickLine(g, lead2, filament[1]);
-	    setVoltageColor(g, (v1+v2)*.5);
-	    drawThickLine(g, filament[0], filament[1]);
+	    drawThickLine(g, lead2, bulb);
 	    updateDotCount();
 	    if (!isCreating()) {
 		drawDots(g, point1, lead1, curcount);
-		double cc = addCurCount(curcount, (dn-16)/2);
-		drawDots(g, lead1,  filament[0], cc);
-		cc = addCurCount(cc, filament_len);
-		drawDots(g, filament[0], filament[1], cc);
-		cc = addCurCount(cc, 16);
-		drawDots(g, filament[1], lead2, cc);
-		cc = addCurCount(cc, filament_len);
+		double cc = addCurCount(curcount, distance(lead1, bulb));
+		drawDots(g, lead1, bulb, cc);
+		cc = addCurCount(cc, distance(bulb, lead2));
+		drawDots(g, bulb, lead2, cc);
 		drawDots(g, lead2, point2, curcount);
 	    }
 	    drawPosts(g);
